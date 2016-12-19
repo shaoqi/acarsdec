@@ -1,7 +1,8 @@
 # See README for more information about choosing the right optimization
 # flags for the target platform
 
-OPT=-Ofast -msse2 -funroll-loops
+#OPT=-Ofast -msse2 -funroll-loops
+OPT= -Ofast -ftree-vectorize -funroll-loops
 #OPT= -Ofast -mfpu=vfpv4 -funroll-loops
 #OPT= -Ofast -mfpu=neon-vfpv4 -funroll-loops
 #OPT= -Ofast -mfpu=neon -ffast-math -funsafe-math-optimizations -fsingle-precision-constant
