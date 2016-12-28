@@ -18,6 +18,7 @@
  */
 #include <time.h>
 #include <pthread.h>
+#include <complex.h>
 
 #define MAXNBCHANNELS 8
 #define INTRATE 12500
@@ -39,19 +40,18 @@ typedef struct {
 
 #if defined(WITH_RTL) || defined(WITH_AIR)
 	float Fr;
-	float *swf;
-	float *cwf;
+	float complex *wf;
+#endif
+#if defined(WITH_AIR)
+	float complex D;
 #endif
 	float *dm_buffer;
-	float MskPhi;
-	float MskFreq,MskDf;
-	float Mska,MskKa;
-	float Mskdc,Mskdcf;
+	float MskPhi,MskDf;
+	float Mska;
+	float Msklvl;
 	float MskClk;
 	unsigned int MskS,idx;
-	float DI,DQ;
-
-	sample_t  *I,*Q;
+	float complex *inb;
 
 	unsigned char outbits;
 	int	nbits;
@@ -75,6 +75,8 @@ extern int verbose;
 extern int outtype;
 extern int netout;
 extern int airflt;
+extern int mdly;
+
 extern int gain;
 extern int ppm;
 
@@ -84,13 +86,17 @@ extern int initOutput(char*,char *);
 extern int initAlsa(char **argv,int optind);
 extern int runAlsaSample(void);
 #endif
+#ifdef WITH_SNDFILE
+extern int initSoundfile(char **argv,int optind);
+extern int runSoundfileSample(void);
+#endif
 #ifdef WITH_RTL
 extern int initRtl(char **argv,int optind);
 extern int runRtlSample(void);
 #endif
 #ifdef WITH_AIR
 extern int initAirspy(char **argv,int optind);
-extern int runAirspy(void);
+extern int runAirspySample(void);
 #endif
 extern int  initMsk(channel_t *);
 extern void demodMSK(channel_t *ch,int len);
@@ -100,5 +106,4 @@ extern int  initAcars(channel_t *);
 extern void decodeAcars(channel_t *);
 
 extern void outputmsg(const msgblk_t*);
-
-
+extern void cls(void);
