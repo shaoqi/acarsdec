@@ -35,6 +35,7 @@ int outtype = 2;
 int netout;
 int airflt = 0;
 #if defined(WITH_RTL) || defined(WITH_AIR)
+int mdly=600;
 int gain = 1000;
 int ppm = 0;
 #endif
@@ -45,11 +46,14 @@ char *logfilename = NULL;
 static void usage(void)
 {
 	fprintf(stderr,
-		"Acarsdec/acarsserv 3.2 Copyright (c) 2015 Thierry Leconte \n\n");
+		"Acarsdec/acarsserv 3.3 Copyright (c) 2016 Thierry Leconte \n\n");
 	fprintf(stderr,
-		"Usage: acarsdec  [-v] [-o lv] [-A] [-n ipaddr:port] [-l logfile]");
+		"Usage: acarsdec  [-v] [-o lv] [-t time] [-A] [-n ipaddr:port] [-l logfile]");
 #ifdef WITH_ALSA
 	fprintf(stderr, " -a alsapcmdevice  |");
+#endif
+#ifdef WITH_SNDFILE
+	fprintf(stderr, " -f inputwavfile  |");
 #endif
 #ifdef WITH_RTL
 	fprintf(stderr,
@@ -60,7 +64,9 @@ static void usage(void)
 	fprintf(stderr,
 		" -A\t\t\t: don't display uplink messages (ie : only aircraft messages)\n");
 	fprintf(stderr,
-		"\n -o lv\t\t\t: output format : 0: no log, 1 one line by msg., 2 full (default) \n");
+		"\n -o lv\t\t\t: output format : 0: no log, 1 one line by msg., 2 full (default) , 3 monitor mode\n");
+	fprintf(stderr,
+		"\n -t time\t\t\t: set forget time in s for monitor mode (default=600s)\n");
 	fprintf(stderr,
 		" -l logfile\t\t: Append log messages to logfile (Default : stdout).\n");
 	fprintf(stderr,
@@ -72,6 +78,10 @@ static void usage(void)
 #ifdef WITH_ALSA
 	fprintf(stderr,
 		" -a alsapcmdevice\t: decode from soundcard input alsapcmdevice (ie: hw:0,0)\n");
+#endif
+#ifdef WITH_SNDFILE
+	fprintf(stderr,
+		" -f inputwavfile\t: decode from a wav file at %d sampling rate\n",INTRATE);
 #endif
 #ifdef WITH_RTL
 	fprintf(stderr,
@@ -85,7 +95,7 @@ static void usage(void)
 		" -s f1 [... fN]\t: decode from airspy receiving at VHF frequencies f1 and optionally f2 to fN in Mhz (ie : -r 0 131.525 131.725 131.825 )\n");
 #endif
 	fprintf(stderr,
-		"\nFor any input source , up to %d channels may be simultanously decoded\n", MAXNBCHANNELS);
+		"\nFor any input source , up to %d channels  could be simultanously decoded\n",MAXNBCHANNELS);
 	exit(1);
 }
 
@@ -101,7 +111,7 @@ int main(int argc, char **argv)
 	int res, n;
 	struct sigaction sigact;
 
-	while ((c = getopt(argc, argv, "vafrso:g:Ap:n:N:l:c:i:")) != EOF) {
+	while ((c = getopt(argc, argv, "vafrso:t:g:Ap:n:N:l:c:i:f:")) != EOF) {
 
 		switch (c) {
 		case 'v':
@@ -110,10 +120,19 @@ int main(int argc, char **argv)
 		case 'o':
 			outtype = atoi(optarg);
 			break;
+		case 't':
+			mdly = atoi(optarg);
+			break;
 #ifdef WITH_ALSA
 		case 'a':
 			res = initAlsa(argv, optind);
 			inmode = 1;
+			break;
+#endif
+#ifdef WITH_SNDFILE
+		case 'f':
+			res = initSoundfile(argv, optind);
+			inmode = 2;
 			break;
 #endif
 #ifdef WITH_RTL
@@ -197,6 +216,13 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Unable to init output\n");
 		exit(res);
 	}
+
+
+	if(outtype==3) {
+		verbose=0;
+		cls();
+	}
+
 	if (verbose)
 		fprintf(stderr, "Decoding %d channels\n", nbch);
 
@@ -207,6 +233,11 @@ int main(int argc, char **argv)
 		res = runAlsaSample();
 		break;
 #endif
+#ifdef WITH_SNDFILE
+	case 2:
+		res = runSoundfileSample();
+		break;
+#endif
 #ifdef WITH_RTL
 	case 3:
 		res = runRtlSample();
@@ -214,7 +245,7 @@ int main(int argc, char **argv)
 #endif
 #ifdef WITH_AIR
 	case 4:
-		res = runAirspy();
+		res = runAirspySample();
 		break;
 #endif
 	default:
